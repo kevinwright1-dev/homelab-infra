@@ -2,3 +2,5 @@
 terraform/*.tfstate*
 terraform/terraform.tfvars
 *.retry
+
+packer/seed.iso

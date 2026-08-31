@@ -1,0 +1,20 @@
+#cloud-config
+autoinstall:
+  version: 1
+  locale: en_US.UTF-8
+  keyboard:
+    layout: us
+  identity:
+    hostname: ubuntu-node1
+    username: kevin
+    password: "$6$WMTXrwfuzSGqfFet$7smAnV0VGXpkjINUmNJUVlBkuXu09O24nKi3Lhz/JIM7DTGiMaRqXDxZUSAiKK2wA3ZjWM//TBcU5/qzRfOIi1"
+  ssh:
+    install-server: true
+    allow-pw: false
+    authorized-keys:
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE6wIg+uNSrcdpL7gl+eWMzH6u5zygAdExPw9utpXrKC kevin@homelab"
+  storage:
+    layout:
+      name: direct
+  late-commands:
+    - "curtin in-target --target=/target -- systemctl enable ssh"

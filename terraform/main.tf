@@ -28,6 +28,11 @@ resource "hyperv_machine_instance" "ubuntu_node1" {
   memory_startup_bytes   = 1073741824
   automatic_start_action = "Start"
 
+  vm_firmware {
+    enable_secure_boot   = "On"
+    secure_boot_template = "MicrosoftUEFICertificateAuthority"
+  }
+
   network_adaptors {
     name        = "nic1"
     switch_name = "WTS-External"
@@ -39,4 +44,18 @@ resource "hyperv_machine_instance" "ubuntu_node1" {
     controller_location  = 0
     path                 = hyperv_vhd.ubuntu_vm_disk.path
   }
+  dvd_drives {
+    controller_number   = 0
+    controller_location = 1
+    path                = ""
+    resource_pool_name  = ""
+  }
+
+  dvd_drives {
+    controller_number   = 0
+    controller_location = 2
+    path                = ""
+    resource_pool_name  = ""
+  }
+
 }
