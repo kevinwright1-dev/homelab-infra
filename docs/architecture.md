@@ -170,3 +170,22 @@ it was just a matter of testing it directly.
 connects straight to a shell with zero password prompt, verifying the
 `authorized-keys` field in `user-data` was correctly configured from
 the start.
+### 11. Ansible: sudo password required for privilege escalation
+**Problem:** First playbook run failed immediately with "Missing sudo
+password," even though SSH itself connected fine.
+**Diagnosis:** SSH login uses key-based auth (no password needed),
+but `become: true` tasks still need to elevate to root via `sudo` on
+the target machine, which requires a password unless passwordless
+sudo is explicitly configured.
+**Fix:** Ran with `-K` (`--ask-become-pass`) to prompt for the sudo
+password interactively. Confirmed the distinction between `-k`
+(SSH password) and `-K` (become/sudo password) — easy to mix up
+since they look nearly identical.
+
+### 12. Verified idempotency
+Re-ran the same playbook immediately after the first successful run,
+with no changes made in between. First run: `changed=6`. Second run:
+`changed=1` (only the apt cache refresh, which always reports as
+changed). This confirms the playbook is declarative — it checks the
+system's actual state and only acts on real drift, rather than
+blindly re-running commands every time.
