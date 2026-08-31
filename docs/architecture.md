@@ -103,3 +103,70 @@ rejected.
 **Fix:** Added an explicit `vm_firmware` block setting
 `secure_boot_template = "MicrosoftUEFICertificateAuthority"`, the
 correct template for non-Windows UEFI bootloaders.
+
+### 6. DVD drives existed but had no media attached
+**Problem:** After a `terraform destroy`/`apply` rebuild, `Add-VMDvdDrive`
+failed with "no available locations found," even though the drives
+appeared to be missing.
+**Diagnosis:** `Get-VMDvdDrive` revealed the drive *bays* already
+existed (created by Terraform) but with `DvdMediaType: None` — empty
+slots, not missing slots. `Add-VMDvdDrive` adds a new drive; it can't
+fill an existing empty one.
+**Fix:** Used `Set-VMDvdDrive` instead, which assigns media to an
+already-existing drive bay rather than trying to create a new one.
+
+### 7. PowerISO built a technically-invalid ISO
+**Problem:** The Ubuntu installer never recognized the seed volume —
+it always fell back to full interactive setup instead of autoinstall.
+**Diagnosis:** Mounting the ISO on Windows and checking
+`Get-Volume` showed `FileSystemLabel` was blank and
+`FileSystemType: Unknown` — PowerISO had produced a disc image
+Windows itself couldn't properly identify, let alone one correctly
+labeled `cidata`.
+**Fix:** Rebuilt the seed ISO using `genisoimage` inside WSL
+(`genisoimage -output seed.iso -volid cidata -joliet -rock seed/`),
+the reference tool most cloud-init documentation is written against.
+Verified with `file seed.iso`, which confirmed
+`ISO 9660 CD-ROM filesystem data 'cidata'` before trusting it again.
+
+### 8. Autoinstall failed by trying to install Docker during setup
+**Problem:** The install got through partitioning and the base OS,
+then failed with `install_docker.io ... returned non-zero exit status
+100`, dropping into a crash-recovery shell.
+**Diagnosis:** The installer environment itself didn't have reliable
+internet access at that stage, even though the finished OS would.
+**Fix:** Removed the `packages` block from `user-data` entirely and
+installed Docker manually over SSH after first boot instead —
+simpler, and easier to debug with a real shell and real error output
+if it fails again.
+
+### 9. Every HTTPS connection from the VM failed certificate validation
+**Problem:** `curl`/`wget` to any HTTPS site — Tailscale, even
+google.com — failed with "no alternative certificate subject name
+matches target host name."
+**Diagnosis:** Checked the actual certificate being returned with
+`curl -v`, and it showed `subject: CN=*.eero.com` instead of the
+real site's certificate — not a DNS or cert-store issue on the VM at
+all. Downloading the file directly revealed the real cause: the
+response body was eero's own **"Device Paused"** page. The home
+network's eero router was blocking this device's internet access
+outright, and every failed request was hitting eero's block page
+instead of the real internet.
+**Fix:** Unpaused the device in the eero app. This single fix
+resolved every "certificate" and "DNS" symptom at once, since they
+were never separate problems.
+
+### 10. SSH key-based login initially untested
+**Problem:** Early SSH attempts either failed to reach the VM at all
+(before the eero block was diagnosed) or fell back to password login,
+leaving it unclear whether the SSH key from `user-data` actually
+worked.
+**Diagnosis:** cloud-init's own boot log had already confirmed the
+key was installed correctly (`Authorized keys from
+/home/kevin/.ssh/authorized_keys for user kevin`), so once the eero
+block was resolved and a real SSH path (via Tailscale) was available,
+it was just a matter of testing it directly.
+**Fix:** Gave internet access to the vm. `ssh kevin@<tailscale-ip>`
+connects straight to a shell with zero password prompt, verifying the
+`authorized-keys` field in `user-data` was correctly configured from
+the start.
