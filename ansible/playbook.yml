@@ -1,0 +1,44 @@
+- hosts: homelab
+  become: true
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install base packages
+      apt:
+        name:
+          - docker.io
+          - docker-compose
+          - fail2ban
+          - ufw
+          - unattended-upgrades
+        state: present
+
+    - name: Enforce SSH key-only auth
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+      notify: restart sshd
+
+    - name: Allow SSH through UFW
+      ufw:
+        rule: allow
+        name: OpenSSH
+
+    - name: Enable UFW
+      ufw:
+        state: enabled
+
+    - name: Ensure Docker is running and enabled
+      service:
+        name: docker
+        state: started
+        enabled: true
+
+  handlers:
+    - name: restart sshd
+      service:
+        name: ssh
+        state: restarted
