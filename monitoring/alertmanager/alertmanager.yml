@@ -1,0 +1,8 @@
+route:
+  receiver: 'relay'
+
+receivers:
+  - name: 'relay'
+    webhook_configs:
+      - url: 'http://relay:5001/alert'
+        send_resolved: true
