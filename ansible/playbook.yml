@@ -27,6 +27,29 @@
         rule: allow
         name: OpenSSH
 
+    - name: Allow k3s API server
+      ufw:
+        rule: allow
+        port: '6443'
+        proto: tcp
+
+    - name: Allow k3s Flannel VXLAN overlay
+      ufw:
+        rule: allow
+        port: '8472'
+        proto: udp
+
+    - name: Allow k3s kubelet API
+      ufw:
+        rule: allow
+        port: '10250'
+        proto: tcp
+
+    - name: Allow all traffic from home LAN subnet
+      ufw:
+        rule: allow
+        src: 192.168.67.0/24
+
     - name: Enable UFW
       ufw:
         state: enabled

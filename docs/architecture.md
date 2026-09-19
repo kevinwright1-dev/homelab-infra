@@ -189,3 +189,53 @@ with no changes made in between. First run: `changed=6`. Second run:
 changed). This confirms the playbook is declarative — it checks the
 system's actual state and only acts on real drift, rather than
 blindly re-running commands every time.
+
+### 15. k3s control plane hit swap/TLS timeouts under memory pressure
+**Problem:** After installing k3s server on ubuntu-node1 and joining
+both workers, `kubectl get nodes` consistently failed with
+"TLS handshake timeout," and `systemctl status k3s` showed the
+service stuck in "activating" for 12+ minutes.
+**Diagnosis:** `systemctl status k3s` showed real numbers, not
+guesswork: `swap: 486.1M`, confirming the VM was swapping heavily.
+ubuntu-node1's 1GB RAM was already fully committed to the existing
+observability stack (5 containers), leaving no real headroom for
+k3s's own memory floor (etcd is particularly memory-hungry).
+**Fix:** Bumped ubuntu-node1's Terraform-managed memory allocation
+from 1GB to 2GB (`memory_startup_bytes`), applied via
+`terraform apply` after a manual `Stop-VM -TurnOff -Force` to clear
+a stuck VM state (same recurring Hyper-V/Terraform quirk as before).
+k3s came up healthy immediately after the restart.
+**Result:** `kubectl get nodes` shows all three nodes `Ready`:
+ubuntu-node1 (control-plane), k3s-worker1, k3s-worker2.
+### 16. ArgoCD pods stuck on missing secret, traced to a firewall blocking the cluster overlay network
+**Problem:** After installing ArgoCD, several pods failed with
+`CreateContainerConfigError: secret "argocd-redis" not found`, and
+`argocd-redis` itself was stuck in `CrashLoopBackOff`. `kubectl logs`
+against the failing init container returned a `502 Bad Gateway`,
+hiding the real error.
+**Diagnosis:** Bypassed the broken kubectl-to-kubelet proxy entirely
+using `crictl logs` directly on the node running the pod
+(`k3s-worker2`), which revealed the actual failure:
+`dial tcp 10.43.0.1:443: i/o timeout` — the pod couldn't reach the
+cluster's internal API service address at all. This pointed to the
+Flannel/VXLAN overlay network (which lets pods reach cluster-internal
+services across nodes) being blocked somewhere in the path.
+Confirmed with `ufw status` on each node: `ubuntu-node1` — the one
+node hardened by the Ansible playbook from Project 1.1 — had UFW
+active, allowing only SSH, silently dropping all k3s cluster traffic
+(API server 6443/tcp, VXLAN 8472/udp, kubelet 10250/tcp) between
+itself and the workers.
+**Fix:** Opened the required ports (`6443/tcp`, `8472/udp`,
+`10250/tcp`, plus a broader allow-rule for the home LAN subnet) via
+`ufw allow`. All ArgoCD pods recovered automatically within minutes
+— the crashed init container simply retried successfully once the
+network path was open.
+**Follow-up:** These UFW rules were added live on the VM but still
+need to be added to the Ansible `playbook.yml` itself, so a future
+`ansible-playbook` run or VM rebuild doesn't silently reintroduce
+this exact bug.
+**Lesson:** A firewall configured correctly for one purpose
+(hardening a standalone web server) can silently break an entirely
+different, later-added workload (a Kubernetes cluster) on the same
+machine — worth re-auditing firewall rules any time a node takes on
+a new role.
