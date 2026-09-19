@@ -5,9 +5,9 @@ autoinstall:
   keyboard:
     layout: us
   identity:
-    hostname: ubuntu-node1
+    hostname: k3s-worker2
     username: kevin
-    password: "$6$WMTXrwfuzSGqfFet$7smAnV0VGXpkjINUmNJUVlBkuXu09O24nKi3Lhz/JIM7DTGiMaRqXDxZUSAiKK2wA3ZjWM//TBcU5/qzRfOIi1"
+    password: "$6$/g5wtjhOKhh9SM5F$UBtLAp1/wsj6yZj7grzd3HuckRh2brIK5UFGB48r0hmfHW3DjF1O/hxtWalVsMigUBqasfj4mABDHZazSMB9W1"
   ssh:
     install-server: true
     allow-pw: false

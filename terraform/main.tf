@@ -25,7 +25,7 @@ resource "hyperv_machine_instance" "ubuntu_node1" {
   generation             = 2
   processor_count        = 1
   static_memory          = true
-  memory_startup_bytes   = 1073741824
+  memory_startup_bytes   = 2147483648
   automatic_start_action = "Start"
 
   vm_firmware {
@@ -44,18 +44,66 @@ resource "hyperv_machine_instance" "ubuntu_node1" {
     controller_location  = 0
     path                 = hyperv_vhd.ubuntu_vm_disk.path
   }
-  dvd_drives {
-    controller_number   = 0
-    controller_location = 1
-    path                = ""
-    resource_pool_name  = ""
+
+}
+resource "hyperv_vhd" "k3s_worker1_disk" {
+  path = "C:\\VMs\\k3s-worker1\\disk.vhdx"
+  size = 21474836480
+}
+
+resource "hyperv_machine_instance" "k3s_worker1" {
+  name                   = "k3s-worker1"
+  generation             = 2
+  processor_count        = 2
+  static_memory          = true
+  memory_startup_bytes   = 2147483648
+  automatic_start_action = "Start"
+
+  network_adaptors {
+    name        = "nic1"
+    switch_name = "WTS-External"
   }
 
-  dvd_drives {
-    controller_number   = 0
-    controller_location = 2
-    path                = ""
-    resource_pool_name  = ""
+  hard_disk_drives {
+    controller_type      = "Scsi"
+    controller_number    = 0
+    controller_location  = 0
+    path                 = hyperv_vhd.k3s_worker1_disk.path
   }
 
+  vm_firmware {
+    enable_secure_boot   = "On"
+    secure_boot_template = "MicrosoftUEFICertificateAuthority"
+  }
+}
+
+resource "hyperv_vhd" "k3s_worker2_disk" {
+  path = "C:\\VMs\\k3s-worker2\\disk.vhdx"
+  size = 21474836480
+}
+
+resource "hyperv_machine_instance" "k3s_worker2" {
+  name                   = "k3s-worker2"
+  generation             = 2
+  processor_count        = 2
+  static_memory          = true
+  memory_startup_bytes   = 2147483648
+  automatic_start_action = "Start"
+
+  network_adaptors {
+    name        = "nic1"
+    switch_name = "WTS-External"
+  }
+
+  hard_disk_drives {
+    controller_type      = "Scsi"
+    controller_number    = 0
+    controller_location  = 0
+    path                 = hyperv_vhd.k3s_worker2_disk.path
+  }
+
+  vm_firmware {
+    enable_secure_boot   = "On"
+    secure_boot_template = "MicrosoftUEFICertificateAuthority"
+  }
 }
